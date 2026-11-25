@@ -1,0 +1,13 @@
+Segment,Joint,VelocityError,AccelerationError
+home2in,Pivot,0,0
+home2in,Bicep,1.13686837721616e-13,0
+home2in,Forearm,2.27373675443232e-13,0
+home2in,Wrist,0,0
+in2out,Pivot,3.90798504668055e-14,1.4210854715202e-14
+in2out,Bicep,1.51582450295488e-13,0
+in2out,Forearm,3.03164900590976e-13,0
+in2out,Wrist,1.51582450295488e-13,3.33066907387547e-15
+out2home,Pivot,1.84741111297626e-13,0
+out2home,Bicep,9.2370555648813e-14,0
+out2home,Forearm,0,0
+out2home,Wrist,9.2370555648813e-14,0

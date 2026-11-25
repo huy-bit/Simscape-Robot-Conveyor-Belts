@@ -1,0 +1,82 @@
+function [simOut,traj,info] = run_trajectory_simulation(method,q0Deg,qfDeg,vmaxDeg,amaxDeg,jmaxDeg,Ts)
+
+arguments
+    method (1,1) string
+    q0Deg (1,6) double {mustBeFinite,mustBeReal}
+    qfDeg (1,6) double {mustBeFinite,mustBeReal}
+    vmaxDeg (1,1) double {mustBePositive,mustBeFinite}
+    amaxDeg (1,1) double {mustBePositive,mustBeFinite}
+    jmaxDeg (1,1) double {mustBePositive,mustBeFinite}
+    Ts (1,1) double {mustBePositive,mustBeFinite}
+end
+
+modelName = 'SML';
+validMethods = ["SCurve","Trapezoid","Cubic","Quintic", ...
+    "Septic","Linear","LSPB","Sinusoidal","Cycloidal", ...
+    "MinimumJerk","MinimumSnap","Bezier"];
+
+idx = find(strcmpi(method,validMethods),1);
+assert(~isempty(idx),'Phuong phap khong hop le: %s',method);
+method = validMethods(idx);
+
+low = [-180 -100 -210 -230 -130 -400];
+high = [180 130 65 230 130 400];
+assert(all(q0Deg >= low & q0Deg <= high),'Goc dau vuot gioi han khop.');
+assert(all(qfDeg >= low & qfDeg <= high),'Goc dich vuot gioi han khop.');
+
+[profiles,info] = generate_twelve_profiles(q0Deg,qfDeg,vmaxDeg,amaxDeg,jmaxDeg,Ts);
+traj = profiles.(char(method));
+
+assert(all(isfinite(traj.q(:))) && all(isfinite(traj.qd(:))) ...
+    && all(isfinite(traj.qdd(:))) && all(isfinite(traj.qddd(:))), ...
+    'Quy dao chua NaN hoac Inf.');
+assert(all(diff(traj.t)>0),'Truc thoi gian khong tang lien tuc.');
+assert(max(abs(traj.q(1,:)-deg2rad(q0Deg)))<1e-8,'Goc dau quy dao khong dung.');
+assert(max(abs(traj.q(end,:)-deg2rad(qfDeg)))<1e-8,'Goc cuoi quy dao khong dung.');
+
+if ~bdIsLoaded(modelName)
+    load_system(modelName);
+end
+
+modeBlock = [modelName '/SCurveMode'];
+oldMode = get_param(modeBlock,'Value');
+oldStopTime = get_param(modelName,'StopTime');
+oldGains = cell(1,6);
+
+for k = 1:6
+    block = sprintf('%s/slider_gain%d',modelName,k);
+    oldGains{k} = get_param(block,'gain');
+end
+
+cleanupObj = onCleanup(@() restore_model(modelName,modeBlock,oldMode,oldStopTime,oldGains));
+
+for k = 1:6
+    dataDeg = rad2deg(traj.q(:,k));
+    tsData = timeseries(dataDeg,traj.t);
+    assignin('base',sprintf('q%d_ts',k),tsData);
+    set_param(sprintf('%s/slider_gain%d',modelName,k),'gain','1');
+end
+
+set_param(modeBlock,'Value','0');
+set_param(modelName,'StopTime',num2str(traj.t(end),'%.12g'));
+set_param(modelName,'SimulationCommand','update');
+
+fprintf('\n===== CHAY MO PHONG ROBOT 6DOF =====\n');
+fprintf('Phuong phap: %s\n',method);
+fprintf('Thoi gian: %.6f giay\n',traj.t(end));
+fprintf('So mau: %d\n',numel(traj.t));
+
+simOut = sim(modelName,'ReturnWorkspaceOutputs','on');
+fprintf('\nMo phong %s hoan tat.\n',method);
+
+clear cleanupObj;
+end
+
+function restore_model(modelName,modeBlock,oldMode,oldStopTime,oldGains)
+for j = 1:6
+    block = sprintf('%s/slider_gain%d',modelName,j);
+    set_param(block,'gain',oldGains{j});
+end
+set_param(modeBlock,'Value',oldMode);
+set_param(modelName,'StopTime',oldStopTime);
+end

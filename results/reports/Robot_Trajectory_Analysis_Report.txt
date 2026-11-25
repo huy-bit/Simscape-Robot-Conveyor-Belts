@@ -1,0 +1,69 @@
+BAO CAO PHAN TICH QUY DAO ROBOT 6 BAC TU DO
+============================================
+
+1. MUC TIEU
+Danh gia ba phuong phap tao quy dao SCurve, Cycloidal va Septic trong mo phong robot 6 bac tu do.
+
+2. THONG SO MO PHONG
+So bac tu do: 6
+Goc dau: [0 0 0 0 0 0] do
+Goc cuoi: [90 60 40 60 60 90] do
+Vmax: 30 do/s
+Amax: 60 do/s^2
+Jmax: 300 do/s^3
+Buoc lay mau phan tich: 0.001 s
+
+3. KET QUA SO SANH
+
+Profile | Duration(s) | Path(m) | Peak V(m/s) | Peak A(m/s2) | Peak J(m/s3) | RMS J(m/s3)
+------------------------------------------------------------------------------------
+SCurve | 3.7000 | 1.26463 | 0.47939 | 1.00649 | 9.75590 | 1.71281
+Cycloidal | 5.9990 | 1.26463 | 0.44914 | 0.35657 | 10.95158 | 0.60500
+Septic | 6.5620 | 1.26463 | 0.44903 | 0.35655 | 10.73171 | 0.57501
+
+4. DANH GIA DIEM CUOI
+
+SCurve:
+Sai lech vi tri: 0.000000000000 mm
+Sai lech huong: 0.000000000000e+00
+Dinh thuc ma tran quay: 1.000000000000
+Sai so truc giao: 7.458171590129e-15
+
+Cycloidal:
+Sai lech vi tri: 0.000011678704 mm
+Sai lech huong: 6.362250802418e-08
+Dinh thuc ma tran quay: 1.000000000000
+Sai so truc giao: 5.632980224158e-15
+
+Septic:
+Sai lech vi tri: 0.000012406321 mm
+Sai lech huong: 6.758637162039e-08
+Dinh thuc ma tran quay: 1.000000000000
+Sai so truc giao: 7.215088440955e-15
+
+5. PHAN TICH KET QUA
+
+SCurve co thoi gian thuc hien ngan nhat, 3.7 giay. Phuong phap nay dap ung cac gioi han van toc, gia toc va jerk trong khong gian khop.
+
+Cycloidal hoan thanh trong khoang 6 giay. Jerk RMS dat 0.605 m/s^3, thap hon SCurve.
+
+Septic hoan thanh trong khoang 6.5625 giay. Jerk RMS dat 0.57501 m/s^3, thap nhat trong ba phuong phap.
+
+Ba phuong phap co cung chieu dai quy dao, cung vi tri cuoi va huong cuoi gan nhu trung khop.
+
+6. KET LUAN VA DE XUAT
+
+SCurve phu hop khi uu tien thoi gian chu ky va dap ung cac gioi han dong hoc.
+Cycloidal phu hop khi can giam jerk RMS va giu thoi gian chu ky o muc trung gian.
+Septic phu hop khi uu tien jerk RMS thap nhat trong ba phuong phap duoc danh gia.
+
+Cac chi so jerk trong khong gian Cartesian duoc tinh bang dao ham so sau noi suy pchip voi chu ky 1 ms, tren khoang 5% den 95% thoi gian quy dao.
+
+===== HET BAO CAO =====
+
+
+7. KIEM DINH TINH NHAT QUAN DU LIEU
+
+Trang thai kiem dinh: true
+Ba quy dao da duoc kiem tra ve thoi gian, XYZ, ma tran quay, gia tri huu han va chieu dai duong di.
+Chi tiet xem Final_Data_Integrity.csv.

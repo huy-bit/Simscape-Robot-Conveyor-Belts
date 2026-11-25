@@ -1,0 +1,516 @@
+
+function trajectory_dashboard
+
+clc;
+
+root = 'D:\Simscape-Robot-Conveyor-Belts-24.1.2.7';
+
+methods = {
+    'Linear'
+    'Trapezoidal'
+    'LSPB'
+    'Cubic Polynomial'
+    'Quintic Polynomial'
+    'Septic Polynomial'
+    'Sinusoidal'
+    'Cycloidal'
+    'S-Curve'
+    'Bezier'
+    'Minimum Jerk'
+    'Minimum Snap'
+};
+
+methodStatus = repmat({'Chua mo phong'},12,1);
+
+fig = uifigure( ...
+    'Name','Robot Trajectory Dashboard', ...
+    'Position',[80 60 1450 850]);
+
+main = uigridlayout(fig,[1 2]);
+main.ColumnWidth = {310,'1x'};
+main.Padding = [10 10 10 10];
+
+%% LEFT PANEL
+
+left = uipanel(main,'Title','12 TRAJECTORY METHODS');
+left.Layout.Column = 1;
+
+lg = uigridlayout(left,[14 1]);
+lg.RowHeight = [repmat({42},1,12),{45},{45}];
+lg.Padding = [8 8 8 8];
+
+buttons = gobjects(12,1);
+
+for k = 1:12
+    buttons(k) = uibutton(lg,'push', ...
+        'Text',sprintf('%02d. %s',k,methods{k}), ...
+        'FontSize',12, ...
+        'ButtonPushedFcn',@(src,event)selectMethod(k));
+end
+
+uibutton(lg,'push', ...
+    'Text','NAP DU LIEU DA MO PHONG', ...
+    'FontWeight','bold', ...
+    'BackgroundColor',[0.1 0.4 0.7], ...
+    'FontColor',[1 1 1], ...
+    'ButtonPushedFcn',@(~,~)loadExistingMethods());
+
+uibutton(lg,'push', ...
+    'Text','DONG DASHBOARD', ...
+    'ButtonPushedFcn',@(~,~)delete(fig));
+
+%% RIGHT PANEL
+
+right = uipanel(main,'Title','SIMULATION RESULTS');
+right.Layout.Column = 2;
+
+rg = uigridlayout(right,[4 2]);
+rg.RowHeight = {45,'1x','1x',230};
+rg.ColumnWidth = {'1x','1x'};
+rg.Padding = [10 10 10 10];
+
+selectedLabel = uilabel(rg, ...
+    'Text','Chua chon phuong phap', ...
+    'FontSize',17, ...
+    'FontWeight','bold');
+
+selectedLabel.Layout.Row = 1;
+selectedLabel.Layout.Column = [1 2];
+
+ax = gobjects(4,1);
+
+chartTitles = {
+    'Joint Position'
+    'Joint Velocity'
+    'Joint Acceleration'
+    'Joint Jerk'
+};
+
+for k = 1:4
+
+    ax(k) = uiaxes(rg);
+
+    ax(k).Layout.Row = ceil(k/2)+1;
+    ax(k).Layout.Column = mod(k-1,2)+1;
+
+    title(ax(k),chartTitles{k});
+    xlabel(ax(k),'Time (s)');
+    grid(ax(k),'on');
+
+end
+
+tbl = uitable(rg);
+
+tbl.Layout.Row = 4;
+tbl.Layout.Column = [1 2];
+
+tbl.ColumnName = {'Metric','Value'};
+tbl.ColumnWidth = {250,'auto'};
+
+resetMetricsTable();
+
+%% LOAD EXISTING METHODS
+
+function loadExistingMethods()
+
+    availableMethods = [1 4 5];
+
+    loadedCount = 0;
+
+    for index = availableMethods
+
+        try
+
+            [trajectory,dataset] = loadMethodData(index);
+
+            validateMethodData(trajectory,dataset);
+
+            methodStatus{index} = 'Da nap du lieu mo phong';
+            buttons(index).Text = sprintf( ...
+                '%02d. %s [DA NAP]',index,methods{index});
+
+            loadedCount = loadedCount + 1;
+
+        catch ME
+
+            methodStatus{index} = 'Loi';
+
+            buttons(index).Text = sprintf( ...
+                '%02d. %s [LOI]',index,methods{index});
+
+            fprintf('\nLoi nap %s:\n%s\n', ...
+                methods{index},ME.message);
+
+        end
+
+    end
+
+    if loadedCount > 0
+        selectMethod(1);
+    end
+
+    uialert(fig, ...
+        sprintf('Da nap thanh cong %d/3 phuong phap.',loadedCount), ...
+        'Ket qua nap du lieu');
+
+end
+
+%% SELECT METHOD
+
+function selectMethod(k)
+
+    selectedLabel.Text = ['Phuong phap: ' methods{k}];
+
+    if ismember(k,[1 4 5])
+
+        try
+
+            [trajectory,dataset] = loadMethodData(k);
+
+            validateMethodData(trajectory,dataset);
+
+            drawResults(trajectory,dataset,methods{k});
+
+            methodStatus{k} = 'Da nap du lieu mo phong';
+
+            buttons(k).Text = sprintf( ...
+                '%02d. %s [DA NAP]',k,methods{k});
+
+        catch ME
+
+            methodStatus{k} = 'Loi';
+
+            buttons(k).Text = sprintf( ...
+                '%02d. %s [LOI]',k,methods{k});
+
+            resetMetricsTable();
+
+            for j = 1:4
+                cla(ax(j));
+            end
+
+            uialert(fig,ME.message, ...
+                ['Loi nap ',methods{k}]);
+
+            fprintf('\nERROR: %s\n',ME.message);
+
+        end
+
+    else
+
+        methodStatus{k} = 'Chua trien khai';
+
+        for j = 1:4
+
+            cla(ax(j));
+            title(ax(j),chartTitles{j});
+            xlabel(ax(j),'Time (s)');
+            grid(ax(j),'on');
+
+        end
+
+        resetMetricsTable();
+
+        tbl.Data{1,2} = 'Chua co du lieu mo phong';
+
+        disp(['Phuong phap ',methods{k}, ...
+            ' chua co du lieu mo phong.']);
+
+    end
+
+end
+
+%% LOAD METHOD DATA
+
+function [trajectory,dataset] = loadMethodData(k)
+
+    normalizedFolder = fullfile(root, ...
+        'results','trajectory_dashboard','normalized_metrics');
+
+    kinematicsFile = fullfile(normalizedFolder, ...
+        'initial_three_methods_kinematics.mat');
+
+    if ~isfile(kinematicsFile)
+        error('Khong tim thay file dong hoc chuan hoa.');
+    end
+
+    K = load(kinematicsFile,'kinematics');
+
+    switch k
+
+        case 1
+
+            methodFolder = fullfile(root, ...
+                'results','trajectory_methods','linear');
+
+            rawFile = fullfile(methodFolder, ...
+                'simulation','linear_simulation_raw.mat');
+
+            methodKey = 'Linear';
+
+            if ~isfile(rawFile)
+                error('Khong tim thay du lieu mo phong Linear.');
+            end
+
+            R = load(rawFile,'logsLinear');
+
+            trajectory = K.kinematics.(methodKey);
+            dataset = R.logsLinear;
+
+        case 4
+
+            methodFolder = fullfile(root, ...
+                'results','trajectory_methods','cubic_polynomial');
+
+            rawFile = fullfile(methodFolder, ...
+                'simulation','cubic_polynomial_simulation_raw.mat');
+
+            methodKey = 'Cubic';
+
+            if ~isfile(rawFile)
+                error('Khong tim thay du lieu mo phong Cubic.');
+            end
+
+            R = load(rawFile,'logsCubic');
+
+            trajectory = K.kinematics.(methodKey);
+            dataset = R.logsCubic;
+
+        case 5
+
+            methodFolder = fullfile(root, ...
+                'results','trajectory_methods','quintic_polynomial');
+
+            rawFile = fullfile(methodFolder, ...
+                'simulation','quintic_polynomial_simulation_raw.mat');
+
+            methodKey = 'Quintic';
+
+            if ~isfile(rawFile)
+                error('Khong tim thay du lieu mo phong Quintic.');
+            end
+
+            R = load(rawFile,'logsQuintic');
+
+            trajectory = K.kinematics.(methodKey);
+            dataset = R.logsQuintic;
+
+        otherwise
+
+            error('Phuong phap nay chua duoc tich hop.');
+
+    end
+
+end
+
+%% VALIDATE DATA
+
+function validateMethodData(T,D)
+
+    requiredFields = {'t','q','qd','qdd','qddd'};
+
+    for n = 1:numel(requiredFields)
+
+        field = requiredFields{n};
+
+        if ~isfield(T,field)
+            error('Thieu truong dong hoc: %s',field);
+        end
+
+        if isempty(T.(field)) || any(~isfinite(T.(field)(:)))
+            error('Du lieu %s rong hoac co NaN/Inf.',field);
+        end
+
+    end
+
+    N = numel(T.t);
+
+    if size(T.q,1) ~= 4 || size(T.q,2) ~= N
+        error('Kich thuoc vi tri khong hop le.');
+    end
+
+    if size(T.qd,1) ~= 4 || size(T.qd,2) ~= N
+        error('Kich thuoc van toc khong hop le.');
+    end
+
+    if size(T.qdd,1) ~= 4 || size(T.qdd,2) ~= N
+        error('Kich thuoc gia toc khong hop le.');
+    end
+
+    if size(T.qddd,1) ~= 4 || size(T.qddd,2) ~= N
+        error('Kich thuoc jerk khong hop le.');
+    end
+
+    if any(diff(T.t)<=0)
+        error('Truc thoi gian khong tang lien tuc.');
+    end
+
+    requiredSignals = {
+        'Torque_Pivot'
+        'Torque_Bicep'
+        'Torque_Forearm'
+        'Torque_Wrist'
+        'motor_currents'
+        'electrical_cost'
+        'torque_cost'
+    };
+
+    for n = 1:numel(requiredSignals)
+        getSignal(D,requiredSignals{n});
+    end
+
+end
+
+%% DRAW CHARTS AND METRICS
+
+function drawResults(T,D,methodName)
+
+    signals = {
+        T.q
+        T.qd
+        T.qdd
+        T.qddd
+    };
+
+    signalNames = {
+        'Position (deg)'
+        'Velocity (deg/s)'
+        'Acceleration (deg/s^2)'
+        'Jerk (deg/s^3)'
+    };
+
+    jointNames = {'Pivot','Bicep','Forearm','Wrist'};
+
+    for p = 1:4
+
+        cla(ax(p));
+        hold(ax(p),'on');
+
+        for j = 1:4
+
+            plot(ax(p),T.t,signals{p}(j,:), ...
+                'LineWidth',1.1, ...
+                'DisplayName',jointNames{j});
+
+        end
+
+        title(ax(p),chartTitles{p});
+        xlabel(ax(p),'Time (s)');
+        ylabel(ax(p),signalNames{p});
+
+        legend(ax(p),'Location','best');
+        grid(ax(p),'on');
+
+        hold(ax(p),'off');
+
+    end
+
+    torqueNames = {
+        'Torque_Pivot'
+        'Torque_Bicep'
+        'Torque_Forearm'
+        'Torque_Wrist'
+    };
+
+    torqueMax = zeros(4,1);
+
+    for j = 1:4
+
+        ts = getSignal(D,torqueNames{j});
+
+        torqueMax(j) = max(abs(ts.Data(:)));
+
+    end
+
+    currentTS = getSignal(D,'motor_currents');
+
+    maxCurrent = max(abs(currentTS.Data(:)));
+
+    electricalTS = getSignal(D,'electrical_cost');
+    torqueCostTS = getSignal(D,'torque_cost');
+
+    electricalCost = electricalTS.Data(end);
+    torqueCost = torqueCostTS.Data(end);
+
+    tbl.Data = {
+        'Status','Da nap du lieu mo phong'
+        'Max Pivot Torque (Nm)',sprintf('%.5f',torqueMax(1))
+        'Max Bicep Torque (Nm)',sprintf('%.5f',torqueMax(2))
+        'Max Forearm Torque (Nm)',sprintf('%.5f',torqueMax(3))
+        'Max Wrist Torque (Nm)',sprintf('%.5f',torqueMax(4))
+        'Max Motor Current (A)',sprintf('%.5f',maxCurrent)
+        'Electrical Cost (J)',sprintf('%.5f',electricalCost)
+        'Torque Cost (Nm^2.s)',sprintf('%.5f',torqueCost)
+    };
+
+    selectedLabel.Text = ['Phuong phap: ' methodName];
+
+    drawnow;
+
+    fprintf('\n====================================\n');
+    fprintf('DASHBOARD: %s\n',methodName);
+    fprintf('Samples: %d\n',numel(T.t));
+    fprintf('Duration: %.4f s\n',T.t(end)-T.t(1));
+    fprintf('Max Pivot Torque: %.5f Nm\n',torqueMax(1));
+    fprintf('Max Bicep Torque: %.5f Nm\n',torqueMax(2));
+    fprintf('Max Forearm Torque: %.5f Nm\n',torqueMax(3));
+    fprintf('Max Wrist Torque: %.5f Nm\n',torqueMax(4));
+    fprintf('Max Motor Current: %.5f A\n',maxCurrent);
+    fprintf('Electrical Cost: %.5f J\n',electricalCost);
+    fprintf('Torque Cost: %.5f Nm^2.s\n',torqueCost);
+    fprintf('====================================\n');
+
+end
+
+%% RESET METRICS TABLE
+
+function resetMetricsTable()
+
+    tbl.Data = {
+        'Status','Chua nap du lieu'
+        'Max Pivot Torque (Nm)','-'
+        'Max Bicep Torque (Nm)','-'
+        'Max Forearm Torque (Nm)','-'
+        'Max Wrist Torque (Nm)','-'
+        'Max Motor Current (A)','-'
+        'Electrical Cost (J)','-'
+        'Torque Cost (Nm^2.s)','-'
+    };
+
+end
+
+%% FIND DATASET SIGNAL
+
+function ts = getSignal(D,name)
+
+    ts = [];
+
+    for n = 1:D.numElements
+
+        element = D.getElement(n);
+
+        if strcmp(element.Name,name)
+
+            ts = element.Values;
+            break;
+
+        end
+
+    end
+
+    if isempty(ts)
+        error('Khong tim thay tin hieu: %s',name);
+    end
+
+    if ~isa(ts,'timeseries')
+        error('Tin hieu %s khong phai timeseries.',name);
+    end
+
+    if isempty(ts.Data) || any(~isfinite(ts.Data(:)))
+        error('Tin hieu %s rong hoac co NaN/Inf.',name);
+    end
+
+end
+
+end
+

@@ -1,0 +1,13 @@
+function update_simulink_joints(jointAnglesDeg)
+arguments
+    jointAnglesDeg (1,6) double {mustBeFinite,mustBeReal}
+end
+modelName='SML';
+if ~bdIsLoaded(modelName), load_system(modelName); end
+for k=1:6
+    block=sprintf('%s/slider_gain%d',modelName,k);
+    set_param(block,'gain',num2str(jointAnglesDeg(k),'%.12g'));
+end
+mode=[modelName '/SCurveMode'];
+if getSimulinkBlockHandle(mode)>0, set_param(mode,'Value','0'); end
+end

@@ -1,0 +1,7 @@
+Joint,Start_deg,End_deg,InitialVelocity_deg_s,PeakVelocity_deg_s,PeakAcceleration_deg_s2,EndpointError_deg
+1,0,90,0,30,60,0
+2,0,60,0,20,40,-7.105427357601e-15
+3,0,40,0,13.3333333333333,26.6666666666667,0
+4,0,60,0,20,40,-7.105427357601e-15
+5,0,60,0,20,40,-7.105427357601e-15
+6,0,90,0,30,60,0

@@ -1,0 +1,2 @@
+SimulationTime_s,GlobalMaxVelocity_rad_s,GlobalMaxAcceleration_rad_s2,GlobalMaxJerk_rad_s3,GlobalMaxTorque_Nm,ElectricalCost_J,TorqueCost_Nm2_s
+20,1.39600016097984,102.538406022655,5795.9012722894,61.3775366874969,678.763939757851,12830.0844408428
